@@ -3,10 +3,10 @@
 /**
  * Very basic unit test engine which runs libphutil tests.
  */
-final class MidjeUnitTestEngine extends ArcanistUnitTestEngine {
+final class KaochaUnitTestEngine extends ArcanistUnitTestEngine {
 
   public function getEngineConfigurationName() {
-    return 'midje';
+    return 'kaocha';
   }
 
   protected function supportsRunAllTests() {
@@ -28,19 +28,9 @@ final class MidjeUnitTestEngine extends ArcanistUnitTestEngine {
       throw new ArcanistNoEffectException(pht('No tests to run.'));
     }
 
-    $midje_config = new TempFile();
-    Filesystem::writeFile($midje_config,
-<<<CFG
-(change-defaults
-  :emitter 'midje.emission.plugins.junit
-  :colorize false)
-CFG
-);
-
     try {
-      list($stdout, $stderr) = execx('lein midje %C :config %s',
-        implode(' ', $run_tests),
-        $midje_config);
+      list($stdout, $stderr) = execx('lein kaocha %C',
+        implode(' ', $run_tests));
     } catch (CommandException $e) {
       // Handle only special error codes (see e.g. `man 1 bash` about
       // "EXIT STATUS")
@@ -49,21 +39,15 @@ CFG
       }
     }
 
-    $results = array();
-    foreach ($run_tests as $test) {
-      $xunit_report = 'target/surefire-reports/TEST-'.$test.'.xml';
-      $cover_report = '';
+    $xunit_report = 'target/test/junit.xml';
+    $cover_report = '';
 
-      $results[] = $this->parseTestResults(
-        $test,
-        $xunit_report,
-        $cover_report);
-    }
-
-    return array_mergev($results);
+    return $this->parseTestResults(
+      $xunit_report,
+      $cover_report);
   }
 
-  private function parseTestResults($test, $xunit_report, $cover_report) {
+  private function parseTestResults($xunit_report, $cover_report) {
     $xunit_results = Filesystem::readFile($xunit_report);
     return id(new ArcanistXUnitTestResultParser())
       ->parseTestResults($xunit_results);
@@ -86,8 +70,8 @@ CFG
   // "project.clj"
   private $projectTestPaths = array('test');
 
-  private $testPrefix = 'test_';
-  private $testSuffix = '';
+  private $testPrefix = '';
+  private $testSuffix = '_test';
 
   /**
    * Small convenience wrapper around `pathinfo()`.
